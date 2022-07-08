@@ -1,16 +1,41 @@
 use rand::prelude::*;
 use std::collections::HashSet;
+use std::env;
 use std::iter;
+use std::process;
 use std::time::Instant;
 
 fn main() {
-    // TODO: 引数を受け取ってパースしたい
-    let (n_door, n_leftclose, n_trial) = (3, 2, 1000);
+    // parse
+    let v: Vec<usize> = match env::args().len() {
+        1 => vec![3, 2, 1000], // default
+        4 => env::args()
+            .enumerate()
+            .filter(|&(i, _)| i > 0)
+            .map(|(_, n)| n.parse::<usize>().expect("aaa"))
+            .collect(),
+        _ => {
+            println!("pass three args: (n_door, n_leftclose, n_trial) like '3 2 100'");
+            process::exit(1);
+        }
+    };
+    let (n_door, n_leftclose, n_trial) = (v[0], v[1], v[2]);
     println!(
         "doors: {}, to choice: {}, trial: {}",
         n_door, n_leftclose, n_trial
     );
 
+    // check args
+    if !(n_leftclose >= 2) {
+        println!("n_leftclose must be >= 2");
+        process::exit(1);
+    }
+    if !(n_door >= n_leftclose + 1) {
+        println!("n_door must be >= n_leftclose + 1");
+        process::exit(1);
+    }
+
+    // simulation
     let t0 = Instant::now();
     simulate_monty_hall(n_door, n_leftclose, n_trial);
     println!("simulation time: {:?}", t0.elapsed());
@@ -24,16 +49,19 @@ fn simulate_monty_hall(n_door: usize, n_leftclose: usize, n_trial: usize) {
         .map(|_| simulate_monty_hall_once(n_door, n_leftclose, &mut rng))
         .collect();
 
+    // TODO: 結果の表示の桁数を揃えてフォーマットしたい
+    // dynamicにformat stringを変えることはできないらしい
+    // let l = format!("{}", n_trial).to_string().len(); // 桁数
     let n_hit_without_change: u32 = results.iter().map(|&(s, _)| s as u32).sum();
     println!(
-        "staying case: {} hits / {} trials, prob={:.3}",
+        "staying case: {:} hits / {:} trials, prob={:.3}",
         n_hit_without_change,
         n_trial,
         n_hit_without_change as f64 / n_trial as f64
     );
     let n_hit_with_change: u32 = results.iter().map(|&(_, c)| c as u32).sum();
     println!(
-        "changed case: {} hits / {} trials, prob={:.3}",
+        "changed case: {:} hits / {:} trials, prob={:.3}",
         n_hit_with_change,
         n_trial,
         n_hit_with_change as f64 / n_trial as f64
